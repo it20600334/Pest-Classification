@@ -1,57 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Image Prediction</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>  </head>
+  <title>Image Prediction</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+  <style>
+    /* Basic styles (same as before) */
+  </style>
+</head>
 <body>
-    <h1>Image Prediction</h1>
+  <h1>Image Prediction</h1>
 
-    <form id="uploadForm" method="POST" enctype="multipart/form-data">
-        <input type="file" name="image" id="imageFile" accept="image/*"><br>
-        <button type="submit">Upload Image</button>
-    </form>
+  <form id="uploadForm" method="POST" enctype="multipart/form-data">
+    <input type="file" name="image" id="imageFile" accept="image/*"><br>
+    <button type="submit">Upload Image</button>
+    <input type="hidden" id="predictionUrl" value="http://your_backend_url/predict">  </form>
 
-    <form id="webcamForm" method="POST">
-        <button type="submit" name="webcam">Capture from Webcam</button>
-    </form>
+  <div id="prediction"></div>
 
-    <div id="prediction"></div>
+  <script>
+    $('#uploadForm').submit(function(event) {
+      event.preventDefault();
 
-    <script>
-        // Handle image upload form submission
-        $('#uploadForm').submit(function(event) {
-            event.preventDefault();
+      const formData = new FormData(this);
+      const predictionUrl = $('#predictionUrl').val();
 
-            const formData = new FormData(this);
-            $.ajax({
-                url: '/predict',
-                type: 'POST',
-                data: formData,
-                cache: false,
-                contentType: false,
-                processData: false,
-                success: function(data) {
-                    if (data.error) {
-                        $('#prediction').text(data.error);
-                    } else {
-                        $('#prediction').text('Predicted Class: ' + data.prediction);
-                    }
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    console.error("Error:", textStatus, errorThrown);
-                    $('#prediction').text('An error occurred. Please try again.');
-                }
-            });
-        });
-
-        // Handle webcam capture form submission
-        $('#webcamForm').submit(function(event) {
-            event.preventDefault();
-
-            // (Server-side implementation for webcam capture using OpenCV is required in app.py)
-            // Replace with appropriate code to capture image from webcam and send prediction request
-            $('#prediction').text('Webcam capture functionality not yet implemented.');
-        });
-    </script>
+      $.ajax({
+        url: predictionUrl,
+        type: 'POST',
+        data: formData,
+        cache: false,
+        contentType: false,
+        processData: false,
+        success: function(data) {
+          if (data.error) {
+            $('#prediction').text(data.error);
+          } else {
+            $('#prediction').text('Predicted Class: ' + data.prediction);
+          }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error("Error:", textStatus, errorThrown);
+          $('#prediction').text('An error occurred. Please try again.');
+        }
+      });
+    });
+  </script>
 </body>
 </html>
