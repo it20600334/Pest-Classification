@@ -1,49 +1,65 @@
-from flask import Flask, request, jsonify, requests
-import tensorflow as tf
+from flask import Flask, render_template, request, jsonify
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image as keras_image
+from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 import numpy as np
+import base64
+import os
 
-# Flask app initialization
 app = Flask(__name__)
+# Load your trained model
+# model = load_model('E:\\SLIIT\\Year 4\\Research\\Application\\Pest-Classification\\MobileNetV2OP.h5')
 
-# Model path (replace with your actual model path)
-model_path = '/path/to/your/MobileNetV2OP.h5'
+# Map class indices to class labels
+class_labels = {
+    0: 'CCI',
+    1: 'NI',
+    2: 'WF'
+}
 
-# Load the model
-model = load_model(model_path)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# Function to preprocess the image
-def preprocess_image(img_path):
-    img = keras_image.load_img(img_path, target_size=(224, 224))  # Adjust target_size as per your model's input shape
-    img_array = keras_image.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)  # Add batch dimension
-    img_array = preprocess_input(img_array)  # Preprocess the image using MobileNetV2 preprocessing function
-    return img_array
-
-# Prediction function
-def make_prediction(img_path):
-    img_array = preprocess_image(img_path)
-    predictions = model.predict(img_array)
-    predicted_class_index = np.argmax(predictions)
-    class_labels = ['CCI', 'NI', 'WF']  # Replace with your actual class labels
-    predicted_class_label = class_labels[predicted_class_index]
-    return predicted_class_label
-
-# Route to handle image upload and prediction
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Access uploaded image data
-    img_file = request.files['image']
-    img_path = '/path/to/save/images/' + img_file.filename
-    img_file.save(img_path)
+    # Check if the POST request contains the 'image' field
+    if 'image' not in request.json:
+        return jsonify({'error': 'No image data provided'}), 400
 
-    # Perform prediction
-    prediction_result = make_prediction(img_path)
+    # Get the base64-encoded image data from the request
+    image_data = request.json['image'].split(',')[1]
 
-    # Send prediction result to the frontend via JSON response
-    return requests.post('http://your_frontend_url/update_prediction', json={'prediction': prediction_result})  # Replace with actual frontend URL
+    # Decode the base64-encoded image data
+    img_bytes = base64.b64decode(image_data)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    # Save the decoded image to a temporary file
+    temp_img_path = 'temp_image.jpg'
+    with open(temp_img_path, 'wb') as img_file:
+        img_file.write(img_bytes)
+
+    # Perform image preprocessing
+    img = image.load_img(temp_img_path, target_size=(254, 254))
+    img_array = image.img_to_array(img)
+    img_array = img_array / 255.0
+    img_array = img_array.reshape((1,) + img_array.shape)
+
+    # Use the loaded model for prediction
+    result = model.predict(img_array)
+
+    # Map the predicted class index to its label
+    predicted_class_index = result.argmax(axis=1)
+    predicted_class_label = class_labels[predicted_class_index[0]]
+
+    # Get the confidence score (probability) for the predicted class
+    confidence_score = result[0][predicted_class_index[0]]
+
+    # Remove the temporary image file
+    os.remove(temp_img_path)
+
+    # Return the prediction result and confidence score
+    return jsonify({'result': predicted_class_label, 'confidence': float(confidence_score)})
+
+
+if __name__ == '__main__': 
+    app.run()

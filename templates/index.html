@@ -1,49 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Image Prediction</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
-  <style>
-    /* Basic styles (same as before) */
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaf Disease Detection Website</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <h1>Image Prediction</h1>
+    <header>
+        <h1>COMO</h1>
+        <nav>
+            <ul>
+                <li><a href="/"></a></li>
+            </ul>
+        </nav>
+    </header>
 
-  <form id="uploadForm" method="POST" enctype="multipart/form-data">
-    <input type="file" name="image" id="imageFile" accept="image/*"><br>
-    <button type="submit">Upload Image</button>
-    <input type="hidden" id="predictionUrl" value="http://your_backend_url/predict">  </form>
+    <main>
+        <section id="upload-section">
+            <h2>Minuscule Pest Detection - DEMO</h2>
+            <div class="button-row">
+                <button type="button" onclick="openCamera()">Open Camera</button>
+                <button type="button" onclick="captureAndPredict()">Capture and Predict</button>
+                <button type="button" onclick="clearScreen()">Clear Screen</button>
+            </div>
 
-  <div id="prediction"></div>
+            <video id="camera-feed" style="display:none;"></video>
+        </section>
 
-  <script>
-    $('#uploadForm').submit(function(event) {
-      event.preventDefault();
+        <section id="prediction-section">
+            <h3>Prediction Result</h3>
+            <h1 id="prediction-result"></h1>
+        </section>
+    </main>
 
-      const formData = new FormData(this);
-      const predictionUrl = $('#predictionUrl').val();
+    <footer>
+        
+    </footer>
 
-      $.ajax({
-        url: predictionUrl,
-        type: 'POST',
-        data: formData,
-        cache: false,
-        contentType: false,
-        processData: false,
-        success: function(data) {
-          if (data.error) {
-            $('#prediction').text(data.error);
-          } else {
-            $('#prediction').text('Predicted Class: ' + data.prediction);
-          }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-          console.error("Error:", textStatus, errorThrown);
-          $('#prediction').text('An error occurred. Please try again.');
+    <script>
+        let mediaStream;
+
+        function openCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    mediaStream = stream;
+                    var videoElement = document.getElementById('camera-feed');
+                    videoElement.srcObject = stream;
+                    videoElement.style.display = 'block';
+                    videoElement.play();
+                })
+                .catch(function (error) {
+                    console.error('Error accessing camera:', error);
+                });
         }
-      });
-    });
-  </script>
+
+        function captureAndPredict() {
+            if (mediaStream) {
+                var videoElement = document.getElementById('camera-feed');
+
+                var canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                var context = canvas.getContext('2d');
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                // Convert the captured image to base64 format
+                var capturedImage = canvas.toDataURL('image/jpeg');
+
+                // Log the captured image data (for testing purposes)
+                console.log(capturedImage);
+
+                // Optional: Display the captured image (for testing purposes)
+                var imgElement = document.createElement('img');
+                imgElement.src = capturedImage;
+                document.getElementById('prediction-section').appendChild(imgElement);
+
+                // Stop the camera stream
+                mediaStream.getTracks().forEach(track => track.stop());
+                document.getElementById('camera-feed').style.display = 'none';
+
+                // Optional: Submit the captured image for prediction using an AJAX request
+                // Modify this part to match your server-side prediction logic
+                fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image: capturedImage }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Display the prediction result on the webpage
+                    document.getElementById('prediction-result').innerText = data.result;
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function clearScreen() {
+            document.getElementById('prediction-section').innerHTML = '';
+        }
+    </script>
 </body>
 </html>
