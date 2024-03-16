@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+import tensorflow as tf
+from tf.keras.models import load_model
+from tf.keras.preprocessing import image
+from tf.keras.applications.mobilenet_v2 import preprocess_input
 import numpy as np
 import base64
 import os
@@ -9,6 +10,7 @@ import os
 app = Flask(__name__)
 # Load your trained model
 # model = load_model('E:\\SLIIT\\Year 4\\Research\\Application\\Pest-Classification\\MobileNetV2OP.h5')
+model = load_model('MobileNetV2OP.h5')
 
 # Map class indices to class labels
 class_labels = {
@@ -32,6 +34,7 @@ def predict():
 
     # Decode the base64-encoded image data
     img_bytes = base64.b64decode(image_data)
+    print(img_bytes)
 
     # Save the decoded image to a temporary file
     temp_img_path = 'temp_image.jpg'
@@ -39,10 +42,11 @@ def predict():
         img_file.write(img_bytes)
 
     # Perform image preprocessing
-    img = image.load_img(temp_img_path, target_size=(254, 254))
+    img = image.load_img(temp_img_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
     img_array = img_array / 255.0
     img_array = img_array.reshape((1,) + img_array.shape)
+    img_array = preprocess_input(img_array) 
 
     # Use the loaded model for prediction
     result = model.predict(img_array)
